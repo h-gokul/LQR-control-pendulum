@@ -157,7 +157,7 @@ disp("all poles have real negative components, " + ...
 %% Simulation: 
 
 % assuming initially at 5 degrees for theta1
-x0 = 0.5; theta1_0 = deg2rad(15); theta2_0 = deg2rad(7);
+x0 = 0.5; theta1_0 = deg2rad(15); theta2_0 = deg2rad(17);
 init_state = [x0, 0, theta1_0, 0, theta2_0, 0];
 openloop_state = ss(A, B, C, D);
 closedloop_state = ss(Ac, B, C, D);
