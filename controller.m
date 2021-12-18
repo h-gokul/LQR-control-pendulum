@@ -5,7 +5,7 @@ close all;
 %% Control of a two inverted pendulums on a cart
 %% define variables 
 syms dX X F M m1 m2 l1 l2 g;
-syms x dx ddx theta1 dtheta1 ddtheta1 theta2 dtheta2 ddtheta2;
+syms x dx d       dx theta1 dtheta1 ddtheta1 theta2 dtheta2 ddtheta2;
 
 %% define state variables 
 X = [x dx theta1 dtheta1 theta2 dtheta2];
@@ -166,13 +166,14 @@ closedloop_state = ss(Ac, B, C, D);
 [y,t,x] = initial(closedloop_state, init_state);
 
 % Unit step response
-hold on
-text = ['Unit step response of LQR Controller Qx=', Q(1,1) ,' Qtheta1= ', Q(3,3) ,'Qtheta2=', Q(3,3), 'R=', R];
-plot(t(:,1),y(:,1),t(:,1),y(:,3), t(:,1),y(:,5));
-legend x theta1 theta2
-title(text)
-hold off
+% hold on
+% text = ['Unit step response of LQR Controller Qx=', Q(1,1) ,' Qtheta1= ', Q(3,3) ,'Qtheta2=', Q(3,3), 'R=', R];
+% plot(t(:,1),y(:,1),t(:,1),y(:,3), t(:,1),y(:,5));
+% legend x theta1 theta2
+% title(text)
+% hold off
 % Q settles in 40 s tolerable response, transients are high tho.
+
 
 disp('====================================================================')
 disp('************************ end of Question 1 *************************')
@@ -226,57 +227,62 @@ disp("Lets choose the desired observer poles to be lesser than that")
 desired_observer_poles= [-3.85 -4.75, -3.5, -3.4, -3.15, -2.9];
 disp(desired_observer_poles);
 
+% Choose Cx with x =1,3,4 for Case1,Case3 or Case4 
+% estimate states using the luenberger observer for chosen case
+Cx = C1;
 
-% Observer pole placement and system design
-% Case 1:  
-L1 = place(A', C1', desired_observer_poles)';
-A_L1 = [Ac (B*K)
-    zeros(6,6) (A-L1*C1)];
-B_L1 = [B 
-        zeros(size(B))];
-C_L1 = [C1 zeros(size(C1))];
-D_L1 = 0;
-observed_stateC1 = ss(A_L1, B_L1, C_L1, D_L1);
+% non linear observer response %%
+openloop_stateCx = ss(A, B, Cx, D);
+Lx = place(A', Cx', desired_observer_poles)';
+A_obCx = A-Lx*Cx; B_obCx = [B Lx]; 
+C_obCx = eye(size(A));D_obCx = zeros(size(B_obCx));
 
-% Case 3:  
-L3 = place(A', C3', desired_observer_poles)';
-A_L3 = [Ac (B*K)
-    zeros(6,6) (A-L3*C3)];
-B_L3 = [B 
-        zeros(size(B))];
-C_L3 = [C3 zeros(size(C3))];
-D_L3 = 0;
-observed_stateC3 = ss(A_L3, B_L3, C_L3, D_L3);
-% Case 4:  
-L4 = place(A', C4', desired_observer_poles)';
-A_L4 = [Ac (B*K)
-    zeros(6,6) (A-L4*C4)];
-B_L4 = [B 
-        zeros(size(B))];
-C_L4 = [C4 zeros(size(C4))];
-D_L4 = 0;
-observed_stateC4 = ss(A_L4, B_L4, C_L4, D_L4);
+% system-error config 
+observed_stateCx = ss(A_obCx, B_obCx, C_obCx, D_obCx);
+dt = 0.01; t_sim = dt:dt:50; u_in = ones(size(t_sim)); % unit step
+[y_openloop, t_] = lsim(openloop_state, u_in, t_sim); % full state C
+[y_openloopCx, t_] = lsim(openloop_stateCx, u_in, t_sim); % observable C
+% observed states
+[X_observed , t_] = lsim(observed_stateCx, [u_in; y_openloopCx'], t_sim);
 
-% Visualize Step input response: 
-figure(1)
-step(observed_stateC1)
-title('Observability for Case1: Only cart motion: x(t)')
-xlabel('Time')
-ylabel('State')
-% Visualize Step input response: 
-figure(2)
-step(observed_stateC3)
-title('Observability for Case 3: cart and pendulum2 motion: x(t), theta2')
-xlabel('Time')
-ylabel('State')
-% Visualize Step input response: 
-figure(3)
-step(observed_stateC4)
-title('Observability for Case 4: cart and pendulum2 motion: x(t), theta2, theta3')
-xlabel('Time')
-ylabel('State')
+% grid on
+% plot(t_,y_openloop) % unstable
+% plot(t_,y_openloopCx) % unstable
+hold on
+subplot(3,1,1);
+title 'Observer Tracking (Linear)- x'
+plot(t_(:,1), y_openloop(:,1),'k', t_(:,1), X_observed(:,1), 'g--', 'Linewidth',1);
+legend x estimated-x
+hold off
+
+hold on
+subplot(3,1,2)
+title 'Observer (Linear) - theta 1'
+plot(t_(:,1), y_openloop(:,3),'k', t_(:,1), X_observed(:,3), 'g--', 'Linewidth',1);
+legend theta1 estimate theta1
+hold off
+
+hold on
+subplot(3,1,3)
+title 'Observer: (Linear)- theta 2'
+plot(t_(:,1), y_openloop(:,5),'k', t_(:,1), X_observed(:,5), 'g--', 'Linewidth',1);
+legend theta1 estimate theta1
+hold off
 
 
+%% non linear observer response
+% [t_n,qx] = ode45(@(t,q)nonlinearObserver(t,q,1,Lx,Cx),t_sim,init_state);
+% hold on
+% plot(t_n(:,1),qx(:,1),t_n(:,1),qx(:,3), t_n(:,1),qx(:,5));
+% ylabel('state variable')
+% xlabel('time (sec)')
+% legend x theta1 theta2
+% title('Non-Linear System LQG for output vectors')
+% hold off
+
+
+disp('====================================================================')
+disp(' Qn g) Designing LQG Controller.. ')
 %% LQG Output state feedback controller design
 %% Optimal state estimator design:
 %  we chose C1, the smallest observable output vector 
@@ -287,19 +293,34 @@ D_out = zeros(size(C,1), size(B,2));
 w= 0.001*eye(size(A));  
 v = 0.0001;
 % optimal Kalman filter gain
+
 Kf = lqe(A, w, C1, w, v);  
 % observed state space system
 A_kf = A - Kf*C1;
 B_kf = [B Kf];
 C_kf = eye(size(A));
 D_kf = zeros(size(B_kf));
- 
+
+disp('size Kf');
+disp(size(Kf));
 sysKF = ss(A_kf, B_kf, C_kf, D_kf);
- 
+
+%% Visualize None linear system.
+% dt = 0.01; t_sim = dt:dt:100; u_in = ones(size(t_sim));
+% [t_n,q1] = ode45(@(t,q)nonlinearObserver(t,q, -K*q,Kf),t_sim,init_state);
+% figure(1)
+% hold on
+% plot(t_n(:,1),q1(:,1),t_n(:,1),q1(:,3), t_n(:,1),q1(:,5));
+% ylabel('state variable')
+% xlabel('time (sec)')
+% legend x theta1 theta2
+% title('Non-Linear System LQG for output vectors')
+% hold off
+
+
+disp('-------------------- LQG --------------------------------------')
 %% Linear Quadratic Gaussion Controller for the Linearized System.
 % LQG System = LQR + Kalman Filter
-disp('====================================================================')
-disp(' Qn f) Designing LQG Controller.. ')
 
 A_lqg = [Ac, B*K;
          zeros(size(A)), (A*Kf*C1)];
@@ -336,23 +357,27 @@ theta2_response= output_states(:,5);
 % theta2_estimates= estimated_states(:,5);
 
 
-hold on
-subplot(3,1,1);
-plot(t,x_response ,'-r')
-legend x-response 
-title 'LQG Controller: cart motion ';
-% 
-subplot(3,1,2);
-plot(t,theta1_response,'-r')
-legend theta1-response 
-title 'LQG Controller: pendulum 1 motion';
-% 
-subplot(3,1,3);
-plot(t,theta2_response,'-r')
-legend theta2-response 
-title 'LQG Controller: pendulum 2 motion';
-disp("Eigen values of final LQR system")
-disp(eig(A_lqg))
+% hold on
+% subplot(3,1,1);
+% plot(t,x_response ,'-r')
+% legend x-response 
+% title 'LQG Controller: cart motion ';
+% % 
+% subplot(3,1,2);
+% plot(t,theta1_response,'-r')
+% legend theta1-response 
+% title 'LQG Controller: pendulum 1 motion';
+% % 
+% subplot(3,1,3);
+% plot(t,theta2_response,'-r')
+% legend theta2-response 
+% title 'LQG Controller: pendulum 2 motion';
+% disp("Eigen values of final LQR system")
+% disp(eig(A_lqg))
+
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -379,42 +404,54 @@ disp(eig(A_lqg))
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % [UNCOMMENT BELOW]
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% % Choose Cx with x =1,3,4 for Case1,Case3 or Case4 
-% % estimate states using the luenberger observer for chosen case
-% openloop_stateCx = ss(A, B, Cx, D);
-% Lx = place(A', Cx', desired_observer_poles)';
-% A_obCx = A-Lx*Cx; B_obCx = [B Lx]; 
-% C_obCx = eye(size(A));D_obCx = zeros(size(B_obCx));
-% 
-% observed_stateCx = ss(A_obCx, B_obCx, C_obCx, D_obCx);
-% dt = 0.01; t_sim = dt:dt:50; u_in = ones(size(t_sim));
-% [y_openloop, t_] = lsim(openloop_state, u_in, t_sim);
-% [y_openloopCx, t_] = lsim(openloop_stateCx, u_in, t_sim);
-% [X_estimated, t_] = lsim(observed_stateCx, [u_in; y_openloopCx'], t_sim);
-% % grid on
-% % plot(t_,y_openloop) % unstable
-% % plot(t_,y_openloopCx) % unstable
-% 
-% % hold on
-% % subplot(3,1,1);
-% % title 'Luenberger Observer: Tracking - x'
-% % plot(t_(:,1), y_openloop(:,1),'k', t_(:,1), X_estimated(:,1), 'g--', 'Linewidth',1);
-% % legend x estimated-x
-% % hold off
-% % 
-% % hold on
-% % subplot(3,1,2)
-% % title 'Luenberger Observer: Tracking - theta 1'
-% % plot(t_(:,1), y_openloop(:,3),'k', t_(:,1), X_estimated(:,3), 'g--', 'Linewidth',1);
-% % legend theta1 estimate theta1
-% % hold off
-% % 
-% % hold on
-% % subplot(3,1,3)
-% % title 'Luenberger Observer: Tracking - theta 2'
-% % plot(t_(:,1), y_openloop(:,5),'k', t_(:,1), X_estimated(:,5), 'g--', 'Linewidth',1);
-% % legend theta1 estimate theta1
-% % hold off
+% Observer pole placement and system design
+% Case 1:  
+L1 = place(A', C1', desired_observer_poles)';
+A_L1 = [Ac (B*K)
+    zeros(6,6) (A-L1*C1)];
+B_L1 = [B 
+        zeros(size(B))];
+C_L1 = [C1 zeros(size(C1))];
+D_L1 = 0;
+observed_stateC1 = ss(A_L1, B_L1, C_L1, D_L1);
+
+% Case 3:  
+L3 = place(A', C3', desired_observer_poles)';
+A_L3 = [Ac (B*K)
+    zeros(6,6) (A-L3*C3)];
+B_L3 = [B 
+        zeros(size(B))];
+C_L3 = [C3 zeros(size(C3))];
+D_L3 = 0;
+observed_stateC3 = ss(A_L3, B_L3, C_L3, D_L3);
+% Case 4:  
+L4 = place(A', C4', desired_observer_poles)';
+A_L4 = [Ac (B*K)
+    zeros(6,6) (A-L4*C4)];
+B_L4 = [B 
+        zeros(size(B))];
+C_L4 = [C4 zeros(size(C4))];
+D_L4 = 0;
+observed_stateC4 = ss(A_L4, B_L4, C_L4, D_L4);
+
+% % Visualize Step input response: 
+% figure(1)
+% step(observed_stateC1)
+% title('Observability for Case1: Only cart motion: x(t)')
+% xlabel('Time')
+% ylabel('State')
+% % Visualize Step input response: 
+% figure(2)
+% step(observed_stateC3)
+% title('Observability for Case 3: cart and pendulum2 motion: x(t), theta2')
+% xlabel('Time')
+% ylabel('State')
+% % Visualize Step input response: 
+% figure(3)
+% step(observed_stateC4)
+% title('Observability for Case 4: cart and pendulum2 motion: x(t), theta2, theta3')
+% xlabel('Time')
+% ylabel('State')
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 % 
 % 
