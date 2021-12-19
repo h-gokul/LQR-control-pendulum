@@ -114,17 +114,16 @@ disp(openloop_poles);
 %% LQR Design
 disp('Desgining Linear Quadratic Regulator... ')
 % Tuning Q
-% Qx='1 ,' Qtheta1= '1 ,'Qtheta2='1 , 'R='1
-% Qx='10 ,' Qtheta1= '100 ,'Qtheta2='200 , 'R='1
-% Qx='100 ,' Qtheta1= '10000 ,'Qtheta2='20000 , 'R='1
+% Qx=1; Qtheta1= 1;Qtheta2=1; R_=1;
+% Qx=10; Qtheta1= 100;Qtheta2=200; R_=1;
+% Qx=100; Qtheta1= 10000;Qtheta2=20000; R_=1;
 
 % Tuning R
-% Qx=1000; Qtheta1=1000000; Qtheta2=10000000; R_=0.0001; %ref
 
-% Qx='2000 ,' Qtheta1= '2000000 ,'Qtheta2='1500000 , R=1
-%Qx=2000; Qtheta1=1500000; Qtheta2=2000000; R_=0.1;
+% Qx=2000; Qtheta1= 2000000; Qtheta2=1500000; R_= 1;
+% Qx=2000; Qtheta1=1500000; Qtheta2=2000000; R_=0.1;
 
-Qx=2000; Qtheta1=1500000; Qtheta2=2000000; R_=0.0001;
+% Qx=2000; Qtheta1=1500000; Qtheta2=2000000; R_=0.0001;
 Q = zeros(6);
 Q(1,1) = Qx;
 Q(2,2) = 10;
@@ -166,13 +165,12 @@ closedloop_state = ss(Ac, B, C, D);
 [y,t,x] = initial(closedloop_state, init_state);
 
 % Unit step response
-% hold on
-% text = ['Unit step response of LQR Controller Qx=', Q(1,1) ,
-%     ' Qtheta1= ', Q(3,3) ,'Qtheta2=', Q(3,3), 'R=', R];
-% plot(t(:,1),y(:,1),t(:,1),y(:,3), t(:,1),y(:,5));
-% legend x theta1 theta2
-% title(text)
-% hold off
+hold on
+text = ['Unit step response of LQR Controller Qx=', num2str(Q(1,1)),'; Qtheta1= ', num2str(Q(3,3)) ,'; Qtheta2=', num2str(Q(5,5)), '; R=', num2str(R)];
+plot(t(:,1),y(:,1),t(:,1),y(:,3), t(:,1),y(:,5));
+legend x theta1 theta2
+title(text)
+hold off
 % Q settles in 40 s tolerable response, transients are high tho.
 
 
@@ -230,7 +228,7 @@ disp(desired_observer_poles);
 
 % Choose Cx with x =1,3,4 for Case1,Case3 or Case4 
 % Track the states using the luenberger observer for chosen case
-Cx = C1;
+Cx = C4;
 
 % non linear observer response %%
 openloop_stateCx = ss(A, B, Cx, D);
@@ -239,32 +237,32 @@ A_obCx = A-Lx*Cx; B_obCx = [B Lx];
 C_obCx = eye(size(A));D_obCx = zeros(size(B_obCx));
 
 % system-error config 
-observed_stateCx = ss(A_obCx, B_obCx, C_obCx, D_obCx);
-dt = 0.01; t_sim = dt:dt:50; u_in = ones(size(t_sim)); % unit step
-[y_openloop, t_] = lsim(openloop_state, u_in, t_sim); % full state C
-[y_openloopCx, t_] = lsim(openloop_stateCx, u_in, t_sim); % observable C
-% observed states
-[X_observed , t_] = lsim(observed_stateCx, [u_in; y_openloopCx'], t_sim);
-
+% observed_stateCx = ss(A_obCx, B_obCx, C_obCx, D_obCx);
+% dt = 0.01; t_sim = dt:dt:50; u_in = ones(size(t_sim)); % unit step
+% [y_openloop, t_] = lsim(openloop_state, u_in, t_sim); % full state C
+% [y_openloopCx, t_] = lsim(openloop_stateCx, u_in, t_sim); % observable C
+% % observed states
+% [X_observed , t_] = lsim(observed_stateCx, [u_in; y_openloopCx'], t_sim);
+% 
 % hold on
 % subplot(3,1,1);
-% title 'Observer Tracking (Linear)- x'
 % plot(t_(:,1), y_openloop(:,1),'k', t_(:,1), X_observed(:,1), 'g--', 'Linewidth',1);
 % legend x estimated-x
+% title 'Observer Tracking (Linear)- x'
 % hold off
 % 
 % hold on
 % subplot(3,1,2)
-% title 'Observer (Linear) - theta 1'
 % plot(t_(:,1), y_openloop(:,3),'k', t_(:,1), X_observed(:,3), 'g--', 'Linewidth',1);
 % legend theta1 estimate theta1
+% title 'Observer (Linear) - theta 1'
 % hold off
 % 
 % hold on
 % subplot(3,1,3)
-% title 'Observer: (Linear)- theta 2'
 % plot(t_(:,1), y_openloop(:,5),'k', t_(:,1), X_observed(:,5), 'g--', 'Linewidth',1);
 % legend theta1 estimate theta1
+% title 'Observer: (Linear)- theta 2'
 % hold off
 
 
@@ -330,23 +328,23 @@ theta2_response= output_states(:,5);
 % theta2_estimates= estimated_states(:,5);
 
 
-hold on
-subplot(3,1,1);
-plot(t,x_response ,'-b')
-legend x-response 
-title 'LQG Controller: cart motion ';
+% hold on
+% subplot(3,1,1);
+% plot(t,x_response ,'-b')
+% legend x-response 
+% title 'LQG Controller: cart motion ';
+% % 
+% subplot(3,1,2);
+% plot(t,theta1_response,'-b')
+% legend theta1-response 
+% title 'LQG Controller: pendulum 1 motion';
 % 
-subplot(3,1,2);
-plot(t,theta1_response,'-b')
-legend theta1-response 
-title 'LQG Controller: pendulum 1 motion';
-% 
-subplot(3,1,3);
-plot(t,theta2_response,'-b')
-legend theta2-response 
-title 'LQG Controller: pendulum 2 motion';
-disp("Eigen values of final LQR system")
-disp(eig(A_lqg))
+% subplot(3,1,3);
+% plot(t,theta2_response,'-b')
+% legend theta2-response 
+% title 'LQG Controller: pendulum 2 motion';
+% disp("Eigen values of final LQR system")
+% disp(eig(A_lqg))
 
 
 
