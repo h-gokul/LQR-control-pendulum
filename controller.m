@@ -123,7 +123,7 @@ disp('Desgining Linear Quadratic Regulator... ')
 % Qx=2000; Qtheta1= 2000000; Qtheta2=1500000; R_= 1;
 % Qx=2000; Qtheta1=1500000; Qtheta2=2000000; R_=0.1;
 
-% Qx=2000; Qtheta1=1500000; Qtheta2=2000000; R_=0.0001;
+Qx=2000; Qtheta1=1500000; Qtheta2=2000000; R_=0.0001;
 Q = zeros(6);
 Q(1,1) = Qx;
 Q(2,2) = 10;
